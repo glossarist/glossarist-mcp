@@ -34,9 +34,15 @@ export interface RegisterInfo {
   series: string | null;
 }
 
+export interface SemanticHit extends ConceptHit {
+  score: number;
+}
+
 export interface Backend {
   listRegisters(): Promise<RegisterInfo[]>;
   searchConcepts(q: string, opts?: { lang?: string; register?: string; limit?: number }): Promise<ConceptHit[]>;
+  /** Vector search over designations; local backends fall back to keyword search honestly (score 0). */
+  semanticSearch(q: string, opts?: { lang?: string; limit?: number }): Promise<SemanticHit[]>;
   getConcept(uuid: string, register: string): Promise<ConceptEntry | null>;
   getLineage(uuid: string, register: string): Promise<{ lineage: unknown[]; lineage_coverage: string; note: string }>;
   resolveCitation(urn: string, register?: string): Promise<{ urn: string; records: { register: string; record: unknown }[] } | null>;
@@ -148,6 +154,12 @@ export class LocalDataBackend implements Backend {
     }
     return records.length ? { urn, records } : null;
   }
+
+  async semanticSearch(q: string, opts: { lang?: string; limit?: number } = {}): Promise<SemanticHit[]> {
+    // Honest fallback: no vector store locally — keyword hits carry score 0.
+    const hits = await this.searchConcepts(q, { lang: opts.lang, limit: opts.limit });
+    return hits.map((h) => ({ ...h, score: 0 }));
+  }
 }
 
 /** Backend over a remote glossarist-server /v1 API. */
@@ -168,6 +180,14 @@ export class RemoteApiBackend implements Backend {
     if (opts.limit) p.set("limit", String(opts.limit));
     const res = await fetch(`${this.baseUrl}/v1/search?${p}`, { headers: this.headers() });
     const body = (await res.json()) as { hits: ConceptHit[] };
+    return body.hits;
+  }
+  async semanticSearch(q: string, opts: { lang?: string; limit?: number } = {}): Promise<SemanticHit[]> {
+    const p = new URLSearchParams({ q, semantic: "true" });
+    if (opts.lang) p.set("lang", opts.lang);
+    if (opts.limit) p.set("limit", String(opts.limit));
+    const res = await fetch(`${this.baseUrl}/v1/search?${p}`, { headers: this.headers() });
+    const body = (await res.json()) as { hits: SemanticHit[] };
     return body.hits;
   }
   async getConcept(uuid: string, register: string): Promise<ConceptEntry | null> {

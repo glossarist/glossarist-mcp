@@ -17,6 +17,16 @@ export function registerGlossaristTools(server: McpServer, backend: Backend): vo
   );
 
   server.tool(
+    "search_concepts_semantic",
+    "Semantic search over glossarist designations — describe the meaning, get the term; cross-lingual when lang is omitted",
+    { q: z.string().describe("meaning/search text"), lang: z.string().optional().describe("restrict to a language namespace (e.g. fra)"), limit: z.number().optional().describe("max hits (default 10)") },
+    async ({ q, lang, limit }) => {
+      const hits = await backend.semanticSearch(q, { lang, limit });
+      return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
+    },
+  );
+
+  server.tool(
     "get_concept",
     "Full concept entry: designations per language, sources, relations",
     { uuid: z.string().describe("concept UUID"), register: z.string().describe("register id") },
