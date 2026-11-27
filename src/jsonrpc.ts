@@ -66,6 +66,8 @@ async function callTool(backend: Backend, name: string, args: Record<string, unk
   switch (name) {
     case "search_concepts":
       return JSON.stringify(await backend.searchConcepts(String(args.q), { lang: str("lang"), register: str("register"), limit: num("limit") }), null, 2);
+    case "search_concepts_semantic":
+      return JSON.stringify(await backend.semanticSearch(String(args.q), { lang: str("lang"), limit: num("limit") }), null, 2);
     case "get_concept":
       return JSON.stringify(await backend.getConcept(String(args.uuid), String(args.register)), null, 2);
     case "get_lineage":

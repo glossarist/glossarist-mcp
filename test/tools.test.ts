@@ -102,3 +102,15 @@ describe("semanticSearch (local fallback)", () => {
     for (const h of hits) expect(h.score).toBe(0);
   });
 });
+
+describe("tools/call semantic dispatch", () => {
+  it("dispatches search_concepts_semantic through the handler", async () => {
+    makeFixture();
+    const b = new LocalDataBackend(root);
+    const handle = createMcpHandler(b);
+    const res = await handle({ jsonrpc: "2.0", id: 20, method: "tools/call", params: { name: "search_concepts_semantic", arguments: { q: "measurement" } } }) as { result: { content: { text: string }[] } };
+    const hits = JSON.parse(res.result.content[0].text) as { designation: string; score: number }[];
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0]!.score).toBe(0);
+  });
+});
