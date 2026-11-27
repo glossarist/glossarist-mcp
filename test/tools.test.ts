@@ -73,7 +73,6 @@ describe("glossarist-mcp", () => {
 });
 
 describe("protocol negotiation (2026-07-28)", () => {
-  makeFixture();
   const backend = new LocalDataBackend(root);
   it("echoes a supported requested version", async () => {
     const handle = createMcpHandler(backend);
@@ -95,9 +94,9 @@ describe("protocol negotiation (2026-07-28)", () => {
 });
 
 describe("semanticSearch (local fallback)", () => {
-  makeFixture();
   const backend = new LocalDataBackend(root);
   it("returns keyword hits with honest score 0", async () => {
+    makeFixture();
     const hits = await backend.semanticSearch("measurement");
     expect(hits.length).toBeGreaterThan(0);
     for (const h of hits) expect(h.score).toBe(0);
