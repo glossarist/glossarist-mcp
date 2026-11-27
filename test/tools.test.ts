@@ -56,7 +56,7 @@ describe("glossarist-mcp", () => {
     const handle = createMcpHandler(backend);
     const res = await handle({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
     const tools = (res?.result as { tools: { name: string }[] }).tools;
-    expect(tools.map((t) => t.name).sort()).toEqual(["get_concept", "get_lineage", "list_editions", "list_registers", "resolve_citation", "search_concepts"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(["get_concept", "get_lineage", "list_editions", "list_registers", "resolve_citation", "search_concepts", "search_concepts_semantic"]);
   });
   it("MCP JSON-RPC: tools/call search end-to-end", async () => {
     const handle = createMcpHandler(backend);
@@ -70,4 +70,35 @@ describe("glossarist-mcp", () => {
     expect(true).toBe(true);
   });
   it("cleanup", () => { rmSync(root, { recursive: true, force: true }); expect(true).toBe(true); });
+});
+
+describe("protocol negotiation (2026-07-28)", () => {
+  const backend = new LocalDataBackend(root);
+  it("echoes a supported requested version", async () => {
+    const handle = createMcpHandler(backend);
+    const res = await handle({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2026-07-28" } }) as { result: { protocolVersion: string } };
+    expect(res.result.protocolVersion).toBe("2026-07-28");
+  });
+  it("echoes 2025-06-18 for legacy clients and defaults to latest otherwise", async () => {
+    const handle = createMcpHandler(backend);
+    const legacy = await handle({ jsonrpc: "2.0", id: 2, method: "initialize", params: { protocolVersion: "2025-06-18" } }) as { result: { protocolVersion: string } };
+    expect(legacy.result.protocolVersion).toBe("2025-06-18");
+    const unknown = await handle({ jsonrpc: "2.0", id: 3, method: "initialize", params: { protocolVersion: "1999-01-01" } }) as { result: { protocolVersion: string } };
+    expect(unknown.result.protocolVersion).toBe("2026-07-28");
+  });
+  it("lists the semantic tool in tools/list", async () => {
+    const handle = createMcpHandler(backend);
+    const res = await handle({ jsonrpc: "2.0", id: 4, method: "tools/list" }) as { result: { tools: { name: string }[] } };
+    expect(res.result.tools.some((t) => t.name === "search_concepts_semantic")).toBe(true);
+  });
+});
+
+describe("semanticSearch (local fallback)", () => {
+  const backend = new LocalDataBackend(root);
+  it("returns keyword hits with honest score 0", async () => {
+    makeFixture();
+    const hits = await backend.semanticSearch("measurement");
+    expect(hits.length).toBeGreaterThan(0);
+    for (const h of hits) expect(h.score).toBe(0);
+  });
 });

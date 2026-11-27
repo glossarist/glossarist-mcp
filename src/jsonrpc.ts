@@ -6,7 +6,11 @@ import type { Backend } from "./backend.js";
 
 type JsonRpcRequest = { jsonrpc: "2.0"; id?: number | string; method: string; params?: Record<string, unknown> };
 
-const PROTOCOL_VERSION = "2025-06-18";
+// Negotiation: we serve the current spec (2026-07-28) and remain compatible
+// with 2025-06-18 clients. If the client requests a version we know, echo it;
+// if unknown, respond with our latest per the MCP negotiation rules.
+const SUPPORTED_PROTOCOL_VERSIONS = ["2026-07-28", "2025-06-18"];
+const LATEST_PROTOCOL_VERSION = "2026-07-28";
 
 function result(id: number | string | undefined, result: unknown): Record<string, unknown> {
   return { jsonrpc: "2.0", id: id ?? null, result };
@@ -23,12 +27,15 @@ export function createMcpJsonRpcHandler(backend: Backend, toolSchemas: { name: s
     }
     const isNotification = req.id === undefined;
     switch (req.method) {
-      case "initialize":
+      case "initialize": {
+        const requested = typeof req.params?.protocolVersion === "string" ? req.params.protocolVersion : undefined;
+        const agreed = requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested) ? requested : LATEST_PROTOCOL_VERSION;
         return result(req.id, {
-          protocolVersion: PROTOCOL_VERSION,
+          protocolVersion: agreed,
           capabilities: { tools: {} },
-          serverInfo: { name: "glossarist-mcp", version: "0.1.0" },
+          serverInfo: { name: "glossarist-mcp", version: "0.2.0" },
         });
+      }
       case "notifications/initialized":
         return isNotification ? null : result(req.id, {});
       case "ping":
@@ -79,6 +86,11 @@ async function callTool(backend: Backend, name: string, args: Record<string, unk
 }
 
 export const MCP_TOOL_SCHEMAS = [
+  {
+    name: "search_concepts_semantic",
+    description: "Semantic search over glossarist designations — describe the meaning, get the term; cross-lingual when lang is omitted",
+    inputSchema: { type: "object", properties: { q: { type: "string", description: "meaning/search text" }, lang: { type: "string", description: "restrict to a language namespace (e.g. fra)" }, limit: { type: "number", description: "max hits (default 10)" } }, required: ["q"] },
+  },
   { name: "search_concepts", description: "Search glossarist terminology registers by designation", inputSchema: { type: "object", properties: { q: { type: "string" }, lang: { type: "string" }, register: { type: "string" }, limit: { type: "number" } }, required: ["q"] } },
   { name: "get_concept", description: "Full concept entry: designations per language, sources, relations", inputSchema: { type: "object", properties: { uuid: { type: "string" }, register: { type: "string" } }, required: ["uuid", "register"] } },
   { name: "get_lineage", description: "Edition supersession chain for a concept", inputSchema: { type: "object", properties: { uuid: { type: "string" }, register: { type: "string" } }, required: ["uuid", "register"] } },
