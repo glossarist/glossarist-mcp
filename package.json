@@ -1,6 +1,6 @@
 {
   "name": "glossarist-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP server for glossarist terminology data \u2014 local GCR/datasets (stdio) or remote glossarist-server (Streamable HTTP)",
   "type": "module",
   "bin": {
@@ -26,5 +26,9 @@
     "typescript": "^5",
     "vitest": "^5",
     "zod": "^4.6.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glossarist/glossarist-mcp.git"
   }
 }
