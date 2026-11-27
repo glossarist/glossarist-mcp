@@ -1,6 +1,6 @@
 {
   "name": "glossarist-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for glossarist terminology data \u2014 local GCR/datasets (stdio) or remote glossarist-server (Streamable HTTP)",
   "type": "module",
   "bin": {
